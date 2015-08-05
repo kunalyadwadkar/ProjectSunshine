@@ -1,7 +1,9 @@
 package com.example.android.sunshine.app;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.view.LayoutInflater;
@@ -10,6 +12,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.example.android.sunshine.app.util.IntentsUtil;
 
 
 public class DetailActivity extends ActionBarActivity {
@@ -41,13 +45,32 @@ public class DetailActivity extends ActionBarActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
-            return true;
+        switch (id) {
+            case R.id.action_settings:
+                startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
+                return true;
+            case R.id.action_show_map:
+                showOnMap();
+                return true;
+            default:
+                 //fall through
         }
 
+
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showOnMap() {
+        SharedPreferences preferences =
+                PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String zipCode = preferences.getString(getString(R.string.pref_location_key),
+                getString(R.string.pref_location_default));
+
+        Intent showOnMapIntent = IntentsUtil.buildMapFromZipcode(zipCode);
+
+        if (showOnMapIntent.resolveActivity(getPackageManager()) != null) {
+            startActivity(showOnMapIntent);
+        }
     }
 
     /**

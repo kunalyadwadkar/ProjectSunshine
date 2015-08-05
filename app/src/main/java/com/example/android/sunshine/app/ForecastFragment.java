@@ -1,9 +1,11 @@
 package com.example.android.sunshine.app;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -16,6 +18,8 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+
+import com.example.android.sunshine.app.util.IntentsUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,7 +34,6 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -41,7 +44,15 @@ public class ForecastFragment extends Fragment {
 
     private ArrayAdapter<String> forecastAdapter;
 
+    private boolean isMetric;
+
     public ForecastFragment() {
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
     }
 
     @Override
@@ -55,16 +66,8 @@ public class ForecastFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        List<String> forecastData = new ArrayList<>(Arrays.asList(
-                "Today - Sunny - 88/63",
-                "Tomorrow - Foggy - 70/46",
-                "Weds - Cloudy - 72/63",
-                "Thurs - Rainy - 64/51",
-                "Fri - Foggy - 70/46",
-                "Sat - Sunny - 76/68"));
-
         forecastAdapter = new ArrayAdapter<>(getActivity(),
-                R.layout.list_item_forecast, R.id.list_item_forecast_textview, forecastData);
+                R.layout.list_item_forecast, R.id.list_item_forecast_textview, new ArrayList<String>());
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
         ListView listViewForecast = (ListView) rootView.findViewById(R.id.listView_forecast);
@@ -95,12 +98,42 @@ public class ForecastFragment extends Fragment {
 
         switch (id) {
             case R.id.action_refresh:
-                new FetchWeatherTask().execute();
+                updateWeather();
+                return true;
+            case R.id.action_show_map:
+                showOnMap();
                 return true;
             default: // fall through
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showOnMap() {
+        SharedPreferences preferences =
+                PreferenceManager.getDefaultSharedPreferences(getActivity().getApplicationContext());
+
+        String zipCode = preferences.getString(getString(R.string.pref_location_key),
+                getString(R.string.pref_location_default));
+
+        Intent showOnMapIntent = IntentsUtil.buildMapFromZipcode(zipCode);
+
+        if (showOnMapIntent.resolveActivity(getActivity().getPackageManager()) != null) {
+            startActivity(showOnMapIntent);
+        }
+    }
+
+    private void updateWeather() {
+        SharedPreferences preferences =
+                PreferenceManager.getDefaultSharedPreferences(getActivity().getApplicationContext());
+
+        String tempUnitPreference = preferences.getString(getString(R.string.pref_temp_unit_key), "0");
+
+        isMetric = "0".equals(tempUnitPreference);
+
+        String locationPostCode = preferences.getString(getString(R.string.pref_location_key), null);
+
+        new FetchWeatherTask().execute(locationPostCode);
     }
 
     class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
@@ -227,11 +260,20 @@ public class ForecastFragment extends Fragment {
      */
     private String formatHighLows(double high, double low) {
         // For presentation, assume the user doesn't care about tenths of a degree.
-        long roundedHigh = Math.round(high);
-        long roundedLow = Math.round(low);
+
+        long roundedHigh = Math.round(toFahrenheitIfNeeded(high));
+        long roundedLow = Math.round(toFahrenheitIfNeeded(low));
 
         String highLowStr = roundedHigh + "/" + roundedLow;
         return highLowStr;
+    }
+
+    private double toFahrenheitIfNeeded(double degreesCelsius) {
+        if (isMetric) {
+            return degreesCelsius;
+        }
+        Log.d("ToFahrenheitIfNeeded", "Converting to fahrenheit");
+        return (degreesCelsius * 9 / 5) + 32;
     }
 
     /**
