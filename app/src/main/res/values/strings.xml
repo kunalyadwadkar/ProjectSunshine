@@ -13,5 +13,6 @@
     <string name="pref_temp_units_label">Temperature Unit</string>
     <string name="pref_temp_unit_key">temp_unit_key</string>
     <string name="show_location">View Location</string>
+    <string name="action_share_label">Share</string>
 
 </resources>
